@@ -1,38 +1,48 @@
 services:
   app:
     build:
-      context: ./docker/php
-      args:
-        APP_USER: ${APP_USER:-laravel}
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
+      context: .
+      dockerfile: Dockerfile
+      target: app
     container_name: laravel_app
-    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
     working_dir: /var/www
     expose:
       - "9000"
-    volumes:
-      - ./src:/var/www
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-laravel}
+      DB_USERNAME: ${DB_USERNAME:-laravel}
+      DB_PASSWORD: ${DB_PASSWORD:-laravel}
+      ICG_HOST: ${ICG_HOST}
+      ICG_DBNAME: ${ICG_DBNAME:-MANAGER}
+      ICG_USER: ${ICG_USER}
+      ICG_PASS: ${ICG_PASS}
+      ICG_ENCRYPT: ${ICG_ENCRYPT:-Optional}
+      ICG_TRUST_CERT: ${ICG_TRUST_CERT:-Yes}
+      APP_KEY: ${APP_KEY}
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - laravel
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
     container_name: laravel_nginx
     restart: unless-stopped
     ports:
-      - "8080:80"
-    volumes:
-      - ./src:/var/www:ro
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - "80:80"
     depends_on:
       - app
-    networks:
-      - laravel
 
   db:
     image: mysql:8.4
@@ -44,7 +54,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-laravel}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
     ports:
-      - "3307:3306"
+      - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
@@ -52,61 +62,6 @@ services:
       retries: 20
       timeout: 3s
       interval: 5s
-    networks:
-      - laravel
-
-  phpmyadmin:
-    image: phpmyadmin:5.2-apache
-    container_name: laravel_phpmyadmin
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PMA_HOST: db
-      PMA_PORT: 3306
-      PMA_ARBITRARY: 0
-      UPLOAD_LIMIT: 128M
-    ports:
-      - "8081:80"
-    networks:
-      - laravel
-
-  vite:
-    build:
-      context: ./docker/node
-    container_name: laravel_vite
-    restart: unless-stopped
-    working_dir: /var/www
-    volumes:
-      - ./src:/var/www
-      - node_modules:/var/www/node_modules
-      - pnpm_store:/pnpm/store
-    ports:
-      - "5173:5173"
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-      VITE_HMR_HOST: "localhost"
-      PNPM_HOME: "/pnpm"
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
-    command: >
-      sh -lc "
-      echo 'Iniciando Vite con pnpm...' &&
-      pnpm --version &&
-      pnpm config set store-dir /pnpm/store &&
-      pnpm install --force &&
-      pnpm run dev -- --host 0.0.0.0 --port 5173
-      "
-    tty: true
-    stdin_open: true
-    networks:
-      - laravel
-
-networks:
-  laravel:
 
 volumes:
   db_data:
-  node_modules:
-  pnpm_store:
