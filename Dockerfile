@@ -5,11 +5,6 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY src/ .
 RUN pnpm run build
 
-FROM composer:2 AS vendor
-WORKDIR /build
-COPY src/composer.json src/composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
 FROM php:8.4-fpm AS php-base
 RUN apt-get update && apt-get install -y \
     bash git curl unzip zip \
@@ -30,7 +25,13 @@ RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor 
     && docker-php-ext-enable pdo_sqlsrv sqlsrv \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-custom.ini
+
+FROM php-base AS vendor
+WORKDIR /build
+COPY src/composer.json src/composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 FROM php-base AS app
 COPY --from=vendor /build/vendor /var/www/vendor
