@@ -23,15 +23,13 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pecl install --offline pdo_sqlsrv-5.12.0 2>/dev/null \
-    || (curl -fsSL https://pecl.php.net/get/pdo_sqlsrv-5.12.0.tgz | tar -xzC /tmp \
-        && cd /tmp/pdo_sqlsrv-5.12.0 && phpize && ./configure && make -j$(nproc) && make install \
-        && rm -rf /tmp/pdo_sqlsrv-5.12.0)
+RUN curl -fsSL https://pecl.php.net/get/pdo_sqlsrv-5.12.0.tgz | tar -xzC /tmp \
+    && cd /tmp/pdo_sqlsrv-5.12.0 && phpize && ./configure --with-pdo_sqlsrv && make -j$(nproc) && make install \
+    && rm -rf /tmp/pdo_sqlsrv-5.12.0
 
-RUN pecl install --offline sqlsrv-5.12.0 2>/dev/null \
-    || (curl -fsSL https://pecl.php.net/get/sqlsrv-5.12.0.tgz | tar -xzC /tmp \
-        && cd /tmp/sqlsrv-5.12.0 && phpize && ./configure && make -j$(nproc) && make install \
-        && rm -rf /tmp/sqlsrv-5.12.0)
+RUN curl -fsSL https://pecl.php.net/get/sqlsrv-5.12.0.tgz | tar -xzC /tmp \
+    && cd /tmp/sqlsrv-5.12.0 && phpize && ./configure --with-sqlsrv && make -j$(nproc) && make install \
+    && rm -rf /tmp/sqlsrv-5.12.0
 
 RUN docker-php-ext-enable pdo_sqlsrv sqlsrv
 
