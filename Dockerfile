@@ -22,19 +22,21 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-        pdo_mysql \
-        mbstring \
-        zip \
-        bcmath \
-        intl \
-        gd \
-        opcache
+    && docker-php-ext-install pdo_mysql \
+    && docker-php-ext-install mbstring \
+    && docker-php-ext-install zip \
+    && docker-php-ext-install bcmath \
+    && docker-php-ext-install intl \
+    && docker-php-ext-install gd \
+    && docker-php-ext-install opcache
 
 ARG SQLSRV_VERSION=5.13.1
 
-RUN pecl install sqlsrv-${SQLSRV_VERSION} pdo_sqlsrv-${SQLSRV_VERSION} \
-    && docker-php-ext-enable sqlsrv pdo_sqlsrv
+RUN pecl install sqlsrv-${SQLSRV_VERSION} \
+    && docker-php-ext-enable sqlsrv
+
+RUN pecl install pdo_sqlsrv-${SQLSRV_VERSION} \
+    && docker-php-ext-enable pdo_sqlsrv
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -57,7 +59,7 @@ RUN composer install \
 # =========================
 # 3. Build de Vite
 # =========================
-FROM node:22-alpine AS frontend
+FROM node:20-alpine AS frontend
 
 WORKDIR /build
 
