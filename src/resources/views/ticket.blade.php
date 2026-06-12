@@ -88,7 +88,7 @@
 <body>
     <div class="ticket">
         <div class="header">
-            <h1>Invoice Crossing</h1>
+            <h1>Concurso Mister Wings</h1>
             <p>Boleta de participación</p>
         </div>
 
