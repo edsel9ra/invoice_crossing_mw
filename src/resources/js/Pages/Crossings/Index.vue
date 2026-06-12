@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 
@@ -12,6 +12,18 @@ const filters = ref({
     from: '',
     to: '',
 });
+
+const matchedCrossings = computed(() =>
+    crossings.value.filter(c => c.status === 'matched')
+);
+
+const unmatchedCrossings = computed(() =>
+    crossings.value.filter(c => c.status !== 'matched')
+);
+
+const hasMixedGroups = computed(() =>
+    matchedCrossings.value.length > 0 && unmatchedCrossings.value.length > 0
+);
 
 async function loadBranches() {
     try {
@@ -104,52 +116,156 @@ onMounted(() => {
         </div>
 
         <div class="card card-hover overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-[600px]">
-                    <thead>
-                        <tr class="bg-slate-50">
-                            <th class="table-header">Factura</th>
-                            <th class="table-header">Cliente</th>
-                            <th class="table-header">Sede</th>
-                            <th class="table-header">Estado</th>
-                            <th class="table-header text-right">Boletas</th>
-                            <th class="table-header text-right">Fecha</th>
-                            <th class="table-header text-right"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr v-for="(c, i) in crossings" :key="c.id"
-                            class="animate-row-in transition-colors hover:bg-slate-50"
-                            :style="{ animationDelay: `${i * 0.04}s` }">
-                            <td class="table-cell font-medium text-slate-800">{{ c.invoiceNumber }}</td>
-                            <td class="table-cell text-slate-600">{{ c.clientName }}</td>
-                            <td class="table-cell text-slate-600">{{ c.branchName }}</td>
-                            <td class="table-cell">
-                                <span :class="c.status === 'matched' ? 'badge-success' : 'badge-warning'">
-                                    <span class="h-1.5 w-1.5 rounded-full"
-                                        :class="c.status === 'matched' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-                                    {{ c.status === 'matched' ? 'Match' : c.status === 'without_matches' ? 'Sin match' : 'No encontrado' }}
-                                </span>
-                            </td>
-                            <td class="table-cell text-right font-semibold">{{ c.ticketsAdded }}</td>
-                            <td class="table-cell text-right text-slate-500">{{ new Date(c.processedAt).toLocaleDateString() }}</td>
-                            <td class="table-cell text-right">
-                                <button @click="viewDetail(c.id)" class="btn-ghost text-xs">
-                                    Detalle →
-                                </button>
-                            </td>
-                        </tr>
-                        <tr v-if="crossings.length === 0">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-slate-400">
-                                <div class="animate-fade-in flex flex-col items-center gap-2">
-                                    <span class="text-2xl animate-empty-float">⊞</span>
-                                    <span>No hay canjes registrados.</span>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+
+            <template v-if="hasMixedGroups">
+                <div class="overflow-x-auto">
+                    <div class="bg-emerald-50/50 border-b border-emerald-100 px-5 py-2.5">
+                        <span class="text-sm font-semibold text-emerald-700">Facturas que participan</span>
+                        <span class="ml-2 text-xs text-emerald-500">({{ matchedCrossings.length }})</span>
+                    </div>
+                    <table class="min-w-[600px]">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="table-header">Factura</th>
+                                <th class="table-header">Cliente</th>
+                                <th class="table-header">Sede</th>
+                                <th class="table-header">Estado</th>
+                                <th class="table-header text-right">Boletas</th>
+                                <th class="table-header text-right">Fecha</th>
+                                <th class="table-header text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(c, i) in matchedCrossings" :key="c.id"
+                                class="animate-row-in transition-colors hover:bg-slate-50"
+                                :style="{ animationDelay: `${i * 0.04}s` }">
+                                <td class="table-cell font-medium text-slate-800">{{ c.invoiceNumber }}</td>
+                                <td class="table-cell text-slate-600">{{ c.clientName }}</td>
+                                <td class="table-cell text-slate-600">{{ c.branchName }}</td>
+                                <td class="table-cell">
+                                    <span class="badge-success">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                        Match
+                                    </span>
+                                </td>
+                                <td class="table-cell text-right">
+                                    <div class="inline-flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                        <span v-for="code in c.ticketCodes" :key="code"
+                                            class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-mono font-medium text-emerald-700">
+                                            {{ code }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="table-cell text-right text-slate-500">{{ new Date(c.processedAt).toLocaleDateString() }}</td>
+                                <td class="table-cell text-right">
+                                    <button @click="viewDetail(c.id)" class="btn-ghost text-xs">
+                                        Detalle →
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="bg-amber-50/50 border-y border-amber-100 px-5 py-2.5">
+                        <span class="text-sm font-semibold text-amber-700">Facturas que no participan</span>
+                        <span class="ml-2 text-xs text-amber-500">({{ unmatchedCrossings.length }})</span>
+                    </div>
+                    <table class="min-w-[600px]">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="table-header">Factura</th>
+                                <th class="table-header">Cliente</th>
+                                <th class="table-header">Sede</th>
+                                <th class="table-header">Estado</th>
+                                <th class="table-header text-right">Boletas</th>
+                                <th class="table-header text-right">Fecha</th>
+                                <th class="table-header text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(c, i) in unmatchedCrossings" :key="c.id"
+                                class="animate-row-in transition-colors hover:bg-slate-50"
+                                :style="{ animationDelay: `${i * 0.04}s` }">
+                                <td class="table-cell font-medium text-slate-800">{{ c.invoiceNumber }}</td>
+                                <td class="table-cell text-slate-600">{{ c.clientName }}</td>
+                                <td class="table-cell text-slate-600">{{ c.branchName }}</td>
+                                <td class="table-cell">
+                                    <span class="badge-warning">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                        {{ c.status === 'without_matches' ? 'Sin match' : 'No encontrado' }}
+                                    </span>
+                                </td>
+                                <td class="table-cell text-right font-semibold text-slate-400">—</td>
+                                <td class="table-cell text-right text-slate-500">{{ new Date(c.processedAt).toLocaleDateString() }}</td>
+                                <td class="table-cell text-right">
+                                    <button @click="viewDetail(c.id)" class="btn-ghost text-xs">
+                                        Detalle →
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            <template v-else>
+                <div class="overflow-x-auto">
+                    <table class="min-w-[600px]">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="table-header">Factura</th>
+                                <th class="table-header">Cliente</th>
+                                <th class="table-header">Sede</th>
+                                <th class="table-header">Estado</th>
+                                <th class="table-header text-right">Boletas</th>
+                                <th class="table-header text-right">Fecha</th>
+                                <th class="table-header text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(c, i) in crossings" :key="c.id"
+                                class="animate-row-in transition-colors hover:bg-slate-50"
+                                :style="{ animationDelay: `${i * 0.04}s` }">
+                                <td class="table-cell font-medium text-slate-800">{{ c.invoiceNumber }}</td>
+                                <td class="table-cell text-slate-600">{{ c.clientName }}</td>
+                                <td class="table-cell text-slate-600">{{ c.branchName }}</td>
+                                <td class="table-cell">
+                                    <span :class="c.status === 'matched' ? 'badge-success' : 'badge-warning'">
+                                        <span class="h-1.5 w-1.5 rounded-full"
+                                            :class="c.status === 'matched' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                                        {{ c.status === 'matched' ? 'Match' : c.status === 'without_matches' ? 'Sin match' : 'No encontrado' }}
+                                    </span>
+                                </td>
+                                <td class="table-cell text-right">
+                                    <template v-if="c.status === 'matched'">
+                                        <div class="inline-flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                            <span v-for="code in c.ticketCodes" :key="code"
+                                                class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-mono font-medium text-emerald-700">
+                                                {{ code }}
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <span v-else class="font-semibold text-slate-400">—</span>
+                                </td>
+                                <td class="table-cell text-right text-slate-500">{{ new Date(c.processedAt).toLocaleDateString() }}</td>
+                                <td class="table-cell text-right">
+                                    <button @click="viewDetail(c.id)" class="btn-ghost text-xs">
+                                        Detalle →
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="crossings.length === 0">
+                                <td colspan="7" class="px-4 py-10 text-center text-sm text-slate-400">
+                                    <div class="animate-fade-in flex flex-col items-center gap-2">
+                                        <span class="text-2xl animate-empty-float">⊞</span>
+                                        <span>No hay canjes registrados.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
 
             <div v-if="pagination.lastPage > 1" class="animate-fade-in flex items-center justify-between border-t border-slate-100 px-5 py-3">
                 <button @click="loadCrossings(pagination.currentPage - 1)" :disabled="pagination.currentPage <= 1"
