@@ -17,13 +17,23 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
     bcmath curl exif gd intl mbstring opcache pcntl pdo_mysql zip
 
-RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -sSL https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev \
-    && pecl install pdo_sqlsrv sqlsrv \
-    && docker-php-ext-enable pdo_sqlsrv sqlsrv \
     && rm -rf /var/lib/apt/lists/*
+
+RUN pecl install --offline pdo_sqlsrv-5.12.0 2>/dev/null \
+    || (curl -fsSL https://pecl.php.net/get/pdo_sqlsrv-5.12.0.tgz | tar -xzC /tmp \
+        && cd /tmp/pdo_sqlsrv-5.12.0 && phpize && ./configure && make -j$(nproc) && make install \
+        && rm -rf /tmp/pdo_sqlsrv-5.12.0)
+
+RUN pecl install --offline sqlsrv-5.12.0 2>/dev/null \
+    || (curl -fsSL https://pecl.php.net/get/sqlsrv-5.12.0.tgz | tar -xzC /tmp \
+        && cd /tmp/sqlsrv-5.12.0 && phpize && ./configure && make -j$(nproc) && make install \
+        && rm -rf /tmp/sqlsrv-5.12.0)
+
+RUN docker-php-ext-enable pdo_sqlsrv sqlsrv
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-custom.ini
