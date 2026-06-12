@@ -27,7 +27,7 @@ createInertiaApp({
             .use(plugin)
             .mount(el);
     },
-    title: (title) => title ? `${title} — Invoice Crossing` : 'Invoice Crossing',
+    title: (title) => title ? `${title} — Concurso Mister Wings` : 'Concurso Mister Wings',
     progress: {
         delay: 80,
         color: '#f59e0b',
