@@ -66,8 +66,7 @@ class CrossingController extends Controller
                 'ticketsAdded' => $c->tickets_added,
                 'processedAt' => $c->processed_at?->toIso8601String(),
                 'createdAt' => $c->created_at->toIso8601String(),
-                'firstTicketId' => $c->raffleTickets->first()?->id,
-                'firstTicketCode' => $c->raffleTickets->first()?->ticket_code,
+                'ticketCodes' => $c->raffleTickets->pluck('ticket_code'),
             ]),
             'pagination' => [
                 'total' => $crossings->total(),
