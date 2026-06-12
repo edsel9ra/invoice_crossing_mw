@@ -1,11 +1,7 @@
-FROM node:22-alpine AS frontend
-WORKDIR /build
-COPY src/package.json src/pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
-COPY src/ .
-RUN pnpm run build
-
-FROM php:8.4-fpm-bookworm AS app
+# =========================
+# 1. Imagen base PHP
+# =========================
+FROM php:8.4-fpm-bookworm AS php-base
 
 WORKDIR /var/www
 
@@ -41,32 +37,86 @@ RUN pecl install sqlsrv-${SQLSRV_VERSION} pdo_sqlsrv-${SQLSRV_VERSION} \
     && docker-php-ext-enable sqlsrv pdo_sqlsrv
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY php.ini /usr/local/etc/php/conf.d/99-custom.ini
 
+# =========================
+# 2. Dependencias Composer
+# =========================
 FROM php-base AS vendor
-WORKDIR /build
-COPY src/composer.json src/composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+WORKDIR /build
+
+COPY src/composer.json src/composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction \
+    --no-progress \
+    --no-scripts
+
+# =========================
+# 3. Build de Vite
+# =========================
+FROM node:22-alpine AS frontend
+
+WORKDIR /build
+
+COPY src/package.json src/pnpm-lock.yaml ./
+
+RUN corepack enable pnpm \
+    && pnpm install --frozen-lockfile
+
+COPY src/ ./
+
+COPY --from=vendor /build/vendor /build/vendor
+
+RUN pnpm run build
+
+
+# =========================
+# 4. Imagen final PHP-FPM
+# =========================
 FROM php-base AS app
+
+WORKDIR /var/www
+
 COPY --from=vendor /build/vendor /var/www/vendor
-COPY --from=frontend /build/public/build /var/www/public/build
-COPY --from=frontend /build/node_modules /var/www/node_modules
 COPY src/ /var/www
+COPY --from=frontend /build/public/build /var/www/public/build
+
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-custom.ini
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
+RUN mkdir -p \
+    storage/app/public \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/logs \
+    bootstrap/cache \
+    && ln -sfn /var/www/storage/app/public /var/www/public/storage \
+    && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/public \
     && chmod +x /usr/local/bin/entrypoint.sh
 
-WORKDIR /var/www
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+USER www-data
+
 EXPOSE 9000
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm"]
+
+# =========================
+# 5. Imagen Nginx
+# =========================
 FROM nginx:alpine AS nginx
+
+WORKDIR /var/www
+
 COPY --from=app /var/www/public /var/www/public
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
 RUN echo "server_tokens off;" > /etc/nginx/conf.d/security.conf
-WORKDIR /var/www
+
 EXPOSE 80
+
 CMD ["nginx", "-g", "daemon off;"]
