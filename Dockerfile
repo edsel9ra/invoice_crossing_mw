@@ -65,7 +65,8 @@ WORKDIR /build
 
 COPY src/package.json src/pnpm-lock.yaml ./
 
-RUN corepack enable pnpm \
+RUN corepack enable \
+    && corepack prepare pnpm@10.23.0 --activate \
     && pnpm install --frozen-lockfile
 
 COPY src/ ./
