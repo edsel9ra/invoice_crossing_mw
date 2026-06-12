@@ -5,46 +5,49 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY src/ .
 RUN pnpm run build
 
-FROM php:8.4-fpm-bookworm AS php-base
+FROM php:8.4-fpm
 RUN apt-get update && apt-get install -y \
-    bash git curl unzip zip \
-    libicu-dev libonig-dev libzip-dev libpng-dev \
-    libjpeg62-turbo-dev libfreetype6-dev libxml2-dev \
-    libcurl4-openssl-dev gnupg2 dirmngr \
+    bash \
+    git \
+    curl \
+    unzip \
+    zip \
+    libicu-dev \
+    libonig-dev \
+    libzip-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    gnupg2 \
+    dirmngr \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
-    bcmath curl exif gd intl mbstring opcache pcntl pdo_mysql zip
+    bcmath \
+    curl \
+    exif \
+    gd \
+    intl \
+    mbstring \
+    opcache \
+    pcntl \
+    pdo_mysql \
+    zip
 
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+# Microsoft SQL Server drivers
+RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && curl -sSL https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev \
+    && pecl install pdo_sqlsrv sqlsrv \
+    && docker-php-ext-enable pdo_sqlsrv sqlsrv \
     && rm -rf /var/lib/apt/lists/*
 
-RUN set -eux; \
-    curl -fsSL https://pecl.php.net/get/sqlsrv-${SQLSRV_VERSION}.tgz | tar -xzC /tmp; \
-    cd /tmp/sqlsrv-${SQLSRV_VERSION}; \
-    phpize; \
-    ./configure --with-sqlsrv; \
-    make -j$(nproc); \
-    make install; \
-    rm -rf /tmp/sqlsrv-${SQLSRV_VERSION}
-
-RUN set -eux; \
-    curl -fsSL https://pecl.php.net/get/pdo_sqlsrv-${SQLSRV_VERSION}.tgz | tar -xzC /tmp; \
-    cd /tmp/pdo_sqlsrv-${SQLSRV_VERSION}; \
-    phpize; \
-    ./configure --with-pdo_sqlsrv; \
-    make -j$(nproc); \
-    make install; \
-    rm -rf /tmp/pdo_sqlsrv-${SQLSRV_VERSION}
-
-RUN docker-php-ext-enable sqlsrv pdo_sqlsrv
-
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-custom.ini
+COPY php.ini /usr/local/etc/php/conf.d/99-custom.ini
 
 FROM php-base AS vendor
 WORKDIR /build
