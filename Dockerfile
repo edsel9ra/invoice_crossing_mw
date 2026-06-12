@@ -5,7 +5,7 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY src/ .
 RUN pnpm run build
 
-FROM php:8.4-fpm AS php-base
+FROM php:8.4-fpm-bookworm AS php-base
 RUN apt-get update && apt-get install -y \
     bash git curl unzip zip \
     libicu-dev libonig-dev libzip-dev libpng-dev \
@@ -23,15 +23,11 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://pecl.php.net/get/pdo_sqlsrv-5.12.0.tgz | tar -xzC /tmp \
-    && cd /tmp/pdo_sqlsrv-5.12.0 && phpize && ./configure --with-pdo_sqlsrv && make -j$(nproc) && make install \
-    && rm -rf /tmp/pdo_sqlsrv-5.12.0
-
-RUN curl -fsSL https://pecl.php.net/get/sqlsrv-5.12.0.tgz | tar -xzC /tmp \
-    && cd /tmp/sqlsrv-5.12.0 && phpize && ./configure --with-sqlsrv && make -j$(nproc) && make install \
-    && rm -rf /tmp/sqlsrv-5.12.0
-
-RUN docker-php-ext-enable pdo_sqlsrv sqlsrv
+ARG SQLSRV_VERSION=5.13.1
+RUN set -eux; \
+    pecl channel-update pecl.php.net; \
+    pecl install sqlsrv-${SQLSRV_VERSION} pdo_sqlsrv-${SQLSRV_VERSION}; \
+    docker-php-ext-enable sqlsrv pdo_sqlsrv
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-custom.ini
