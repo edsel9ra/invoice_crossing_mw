@@ -27,6 +27,7 @@ class ItemSeeder extends Seeder
             ['code' => '694', 'name' => 'MARGARITA FLAMINGO JOSE CUERVO', 'tickets_per_unit' => 1, 'is_active' => true],
             ['code' => '695', 'name' => 'MARGARITA TRADITIONAL JOSE CUERVO', 'tickets_per_unit' => 1, 'is_active' => true],
             ['code' => '1706', 'name' => 'MOJITO PASSION FRUIT TEXANO', 'tickets_per_unit' => 1, 'is_active' => true],
+            ['code' => '2035', 'name' => 'MARGARITA LOVE ON ROCKS JOSE CUERVO', 'tickets_per_unit' => 1, 'is_active' => true],
             ['code' => '2156', 'name' => 'MARGARITA MANGORITA JOSE CUERVO 2X3', 'tickets_per_unit' => 2, 'is_active' => true],
             ['code' => '2157', 'name' => 'MARGARITA COCONUT JOSE CUERVO 2X3', 'tickets_per_unit' => 2, 'is_active' => true],
             ['code' => '2158', 'name' => 'MARGARITA BLUE SKY JOSE CUERVO 2X3', 'tickets_per_unit' => 2, 'is_active' => true],
