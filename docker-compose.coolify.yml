@@ -25,7 +25,6 @@ services:
       ICG_ENCRYPT: ${ICG_ENCRYPT:-Optional}
       ICG_TRUST_CERT: ${ICG_TRUST_CERT:-Yes}
       APP_KEY: ${APP_KEY}
-      SESSION_DRIVER: database
       QUEUE_CONNECTION: database
       CACHE_STORE: database
     depends_on:
